@@ -96,7 +96,7 @@ cgminer_SOURCES += driver-drillbit.c driver-drillbit.h
 endif
 
 if HAS_ICARUS
-cgminer_SOURCES += driver-icarus.c
+cgminer_SOURCES += driver-icarus.c crc16.c crc.h
 endif
 
 if HAS_KLONDIKE
