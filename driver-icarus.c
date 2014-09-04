@@ -49,7 +49,6 @@
 #include "compat.h"
 #include "miner.h"
 #include "usbutils.h"
-/*********************************************************/
 #include "elist.h"
 #include "driver-icarus.h"
 #include "crc.h"
@@ -57,12 +56,6 @@
 #include "protocol.h"
 
 #define MM_BUF_LEN	39
-//#define AVA2_WRITE_SIZE	(sizeof(struct avalon2_pkg))
-//#define AVA2_READ_SIZE	AVA2_WRITE_SIZE
-
-/*********************************************************/
-
-
 // The serial I/O speed - Linux uses a define 'B115200' in bits/termios.h
 #define ICARUS_IO_SPEED 115200
 
@@ -486,7 +479,6 @@ static void rev(unsigned char *s, size_t l)
 }
 
 
-/**********************************************************/
 static int avalon_init_pkg(struct avalon2_pkg *pkg, struct ICARUS_WORK *icarusPkg,uint8_t type, uint8_t idx, uint8_t cnt)
 {
 	unsigned short crc;			//16bits
@@ -498,7 +490,6 @@ static int avalon_init_pkg(struct avalon2_pkg *pkg, struct ICARUS_WORK *icarusPk
 	pkg->type = type;
 	pkg->idx = idx;
 	pkg->cnt = cnt;
-	//uint8_t data = pkg;
 
 	switch(type)
 	{
@@ -507,23 +498,19 @@ static int avalon_init_pkg(struct avalon2_pkg *pkg, struct ICARUS_WORK *icarusPk
 			break;
 		case AVA2_P_MIDSTATE:
 			memcpy(pkg->data,icarusPkg->midstate,32);
-			//memcpy(buf,pkg,AVA2_WRITE_SIZE);
-			//err = usb_write(icarus, (char *)buf, AVA2_WRITE_SIZE, &amount, C_AVA2_WRITE);
 			break;
 
 		case AVA2_P_DATA:
 			memcpy(pkg->data,(uint8_t *)icarusPkg+32,32);
-			//memcpy(buf,pkg,AVA2_WRITE_SIZE);
-			//err = usb_write(icarus, (char *)buf, AVA2_WRITE_SIZE, &amount, C_AVA2_WRITE);
 			break;
 
 		default:
 			break;
 	}
 
-	crc = crc16(pkg->data, AVA2_P_DATA_LEN);				//生成CRC16校验值;
+	crc = crc16(pkg->data, AVA2_P_DATA_LEN);
 
-	pkg->crc[0] = (crc & 0xff00) >> 8;						//高位右移八位;NXP大端模式;
+	pkg->crc[0] = (crc & 0xff00) >> 8;
 	pkg->crc[1] = crc & 0x00ff;
 	return 0;
 }
@@ -539,7 +526,7 @@ static int decode_pkg(struct thr_info *thr, struct avalon2_pkg *ar, uint8_t *pkg
 
 	int type = AVA2_GETS_ERROR;
 
-	memcpy((uint8_t *)ar, pkg, AVA2_READ_SIZE);		//数组转成avalon2_pkg结构体;
+	memcpy((uint8_t *)ar, pkg, AVA2_READ_SIZE);
 
 	if (ar->head[0] == AVA2_H1 && ar->head[1] == AVA2_H2) {
 		expected_crc = crc16(ar->data, AVA2_P_DATA_LEN);
@@ -555,10 +542,6 @@ static int decode_pkg(struct thr_info *thr, struct avalon2_pkg *ar, uint8_t *pkg
 				applog(LOG_DEBUG, "Avalon2: AVA2_P_ACKDETECT");
 				break;
 			case AVA2_P_ACKMIDSTATE:
-				//avalon_init_pkg(sendPkg,icarusData,AVA2_P_DATA,1,1);			
-				//ret = usb_read(icarus, (char *)mm_receive_buffer, MM_BUF_LEN, &amount, C_GETRESULTS);
-				//decode_pkg();
-				//type = AVA2_P_ACKMIDSTATE;
 				break;
 
 			case AVA2_P_NONCE:
@@ -580,11 +563,6 @@ static int decode_pkg(struct thr_info *thr, struct avalon2_pkg *ar, uint8_t *pkg
 out:
 	return type;
 }
-
-
-
-
-/**********************************************************/
 
 #define ICA_NONCE_ERROR -1
 #define ICA_NONCE_OK 0
@@ -1167,12 +1145,7 @@ cmr2_retry:
 			continue;
 		}
 
-		/**********************************************************/
-		
 		avalon_init_pkg(&detect_pkg,NULL,AVA2_P_DETECT,1,1);
-	
-		
-		/**********************************************************/
 		err = usb_write_ii(icarus, info->intinfo,
 				(char *)(&detect_pkg), sizeof(detect_pkg), &amount, C_SENDWORK);
 
@@ -1408,15 +1381,9 @@ static int64_t icarus_scanwork(struct thr_info *thr)
 	int ret, err, amount;
 	unsigned char nonce_bin[ICARUS_BUF_SIZE];
 	struct ICARUS_WORK workdata;
-	/**********************************************************/
-	//personal add (2)
 	struct avalon2_pkg send_pkg;
 	struct avalon2_pkg receive_pkg;
 	unsigned char mm_receive_buffer[MM_BUF_LEN];
-
-
-
-	/**********************************************************/
 	char *ob_hex;
 	uint32_t nonce;
 	int64_t hash_count = 0;
@@ -1470,12 +1437,8 @@ static int64_t icarus_scanwork(struct thr_info *thr)
 
 	// We only want results for the work we are about to send
 	usb_buffer_clear(icarus);
-
-	/**********************************************************/
 	avalon_init_pkg(&send_pkg,&workdata,AVA2_P_MIDSTATE,1,1);
 	err = usb_write(icarus,(char *)&send_pkg,sizeof(send_pkg),&amount,C_SENDWORK);
-	/**********************************************************/
-	//err = usb_write_ii(icarus, info->intinfo, (char *)(&workdata), sizeof(workdata), &amount, C_SENDWORK);
 	if (err < 0 || amount != sizeof(send_pkg)) {
 		applog(LOG_ERR, "%s%i: Comms error (werr=%d amt=%d)",
 				icarus->drv->name, icarus->device_id, err, amount);
@@ -1491,9 +1454,7 @@ static int64_t icarus_scanwork(struct thr_info *thr)
 		free(ob_hex);
 	}
 
-	/* Icarus will return 4 bytes (ICARUS_READ_SIZE) nonces or nothing */
 	memset(nonce_bin, 0, sizeof(nonce_bin));
-	/**********************************************************/
 	/*Avalon nano will return 39 bytes(struct avalon2_pkg) AVA2_P_ACKMIDSTATE */
 
 	memset(mm_receive_buffer,0,sizeof(mm_receive_buffer));
@@ -1531,8 +1492,6 @@ static int64_t icarus_scanwork(struct thr_info *thr)
 		ret = decode_pkg(thr, &receive_pkg,mm_receive_buffer);
 	}	
 
-	/**********************************************************/
-	//ret = icarus_get_nonce(icarus, nonce_bin, &tv_start, &tv_finish, thr, info->read_time);
 	if (ret == ICA_NONCE_ERROR)
 		goto out;
 
